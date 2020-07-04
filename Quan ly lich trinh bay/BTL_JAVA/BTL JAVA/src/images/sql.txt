@@ -1,0 +1,116 @@
+use master
+go
+create database dulieu
+on primary
+(
+	name		= 'dulieu.dat',
+	fliename	= 'D:dulieu.mdf',
+	size		= 5MB,
+	maxsize		= 50MB,
+	fliegrowth	= 10MB
+)
+log on
+(
+	name		= 'dulieu.log',
+	fliename	= 'D:dulieu.ldf',
+	size		= 1MB,
+	maxsize		= 5MB,
+	fliegrowth	= 10%
+)
+go
+use dulieu
+go
+create table HANG
+(
+	mahang		int not null primary key,
+	tenhang		nvarchar(25) not null,
+	soluong		int not null,
+	giaban		money not null
+)
+create table HOADON
+(
+	mahd		int not null,
+	mahang		int not null,
+	soluongban	int not null,
+	ngayban	datetime not null,
+	constraint PK_HOADON primary key(mahd, mahang),
+	constraint FK_HOADON_HANG foreign key(mahang)
+		references HANG(mahang)
+)
+go
+insert into HANG values(1, 'but', 12, 2000)
+insert into HANG values(2, 'sacg', 7, 13000)
+insert into HANG values(3, 'vo', 15, 82000)
+
+insert into HOADON values(1, 2, 4, '03-04-2019')
+insert into HOADON values(2, 2, 5, '06-05-2019')
+insert into HOADON values(3, 3, 8, '03-04-2019')
+
+select * from HANG 
+select * from HOADON
+
+create trigger vd2
+on HOADON
+for insert
+as
+begin
+	--ma san pham can mua--
+	declare		@masp int
+	set			@masp = (select mahang from inserted)
+	--kiem tra masp nay co trong bang hoa don hay khong
+	if(not exists(select mahang from HANG where MAHANG = @masp))
+		begin
+			raiserror(N'không có hàng lày :)', 16, 1)
+			rollback transaction
+		end
+	else
+		begin
+			declare @slmua int
+			declare @slco  int
+			set @slmua = (select soluongban from inserted)
+			set @slco  = (select soluong    from HANG
+					where mahang = @masp)
+			if(@slco < @slmua)
+				begin
+					raiserror(N'không d? hàng d? bán',16,1)
+					rollback transaction
+				end
+				else
+					update HANG set soluong = soluong - soluongban
+					from HANG inner join inserted on HANG.mahang = inserted.mahang
+		end
+end
+--test--
+select * from HANG 
+select * from HOADON
+
+insert into HOADON values(4,3,2,'1-1-2019')
+
+select * from HANG 
+select * from HOADON
+
+
+--trigger xoa--
+create trigger xoa2
+on HOADON
+for delete
+as
+begin
+	update HANG set	soluong = soluong + deleted.soluongban
+	from HANG inner join deleted
+	on	HANG.MAHANG = deleted.MAHANG
+end
+
+--test--
+select * from HANG 
+select * from HOADON
+
+delete from HOADON where mahd = 1
+delete from HOADON where mahd = 2
+
+select * from HANG 
+select * from HOADON
+
+--cau3--
+
+
